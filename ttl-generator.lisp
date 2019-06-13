@@ -4,6 +4,12 @@
 
 (declaim (optimize (debug 3) (speed 0)))
 
+(defmacro with-union-store (&body body)
+  `(let ((*union-store* nil)
+         (*union-store-index* 0))
+     (declare (special *union-store* *union-store-index*))
+     ,@body))
+
 (defun all-resources ()
   "Yields back all known resources."
   (loop for val being
@@ -13,12 +19,14 @@
 (defun generate ()
   "Constructs the ttl file."
   (let ((ttl-specification
-         (format nil "~A~&~%~A~&~%~A~&~%~A~&~%~A~&~%"
-                 (make-ttl-prefixes)
-                 (make-ttl-ontology-description)
-                 (make-ttl-class-description)
-                 (make-ttl-datatype-descriptions)
-                 (make-ttl-relation-descriptions))))
+         (with-union-store
+           (format nil "~A~&~%~A~&~%~A~&~%~A~&~%~A~&~%~A~&~%"
+                   (make-ttl-prefixes)
+                   (make-ttl-ontology-description)
+                   (make-ttl-class-description)
+                   (make-ttl-datatype-descriptions)
+                   (make-ttl-relation-descriptions)
+                   (make-ttl-union-classes)))))
     (when (find :docker *features*)
       (with-open-file (output "/config/output/model.ttl" :direction :output :if-exists :supersede)
         (format output "~A" ttl-specification)))
@@ -63,10 +71,9 @@
                        (string-downcase (symbol-name (mu-cl-resources::resource-type property)))
                        (string-downcase (symbol-name (mu-cl-resources::json-key property)))
                        (if (> (length properties) 1)
-                           (format nil "[ rdf:type owl:Class; owl:unionOf (~{~A~^ ~}) ]"
-                                   (loop for (property . resource) in properties
-                                      collect
-                                        (mu-cl-resources::ld-class resource)))
+                           (union-class-id (loop for (property . resource) in properties
+                                              collect
+                                                (mu-cl-resources::ld-class resource)))
                            (mu-cl-resources::ld-class resource)))))))
 
 (defun make-ttl-relation-descriptions ()
@@ -110,7 +117,7 @@
                                      :key (lambda (x) (format nil "~A" x)))))
                          (if (eql (length types) 1)
                              (first types)
-                             (format nil "[ rdf:type owl:Class; owl:unionOf (~{~A~^ ~}) ]" types)))
+                             (union-class-id types)))
                        (let ((types (remove-duplicates
                                      (loop for (relationship . resource) in relationships
                                       collect
@@ -121,7 +128,32 @@
                                      :key (lambda (x) (format nil "~A" x)))))
                          (if (eql (length types) 1)
                              (first types)
-                             (format nil "[ rdf:type owl:Class; owl:unionOf (~{~A~^ ~}) ]" types))))))))
+                             (union-class-id types))))))))
 
 (defun resource-by-name (name)
   (mu-cl-resources::find-resource-by-name name))
+
+(defun union-class-id (classes)
+  "Yields an identifier for the union class and ensures it exists"
+  (declare (special *union-store* *union-store-index*))
+  (let* ((properties (sort
+                      (remove-duplicates (mapcar #'princ-to-string classes)
+                                         :test #'string=)
+                      #'string<))
+         (idx (position properties *union-store* :test #'equal)))
+    (flet ((print-union-index (idx)
+             (format nil "_:union~A" idx)))
+      (if idx
+          (print-union-index idx)
+          (progn
+            (setf *union-store* `(,@*union-store* ,properties))
+            (print-union-index (1- (length *union-store*))))))))
+
+
+(defun make-ttl-union-classes ()
+  (declare (special *union-store*))
+  (format nil "~&~{_:union~A rdf:type owl:Class;~%  owl:unionOf (~{~A~^ ~}).~%~}"
+          (loop
+             for idx from 0
+             for classes in *union-store*
+             append `(,idx ,classes))))
