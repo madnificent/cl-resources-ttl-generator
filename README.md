@@ -8,7 +8,7 @@ Derives a ttl from a mu-cl-resources specification
     # Generate the sources
     docker run \
            -v `pwd`/config/resources:/config \
-           -v `pwd`/tmp/:/config/output \
+           -v `pwd`/doc/:/config/output \
            madnificent/cl-resources-ttl-generator
     
     # Copy from the terminal, or open the generated json file
