@@ -11,10 +11,14 @@
      ,@body))
 
 (defun all-resources ()
-  "Yields back all known resources."
-  (loop for val being
-     the hash-values of mu-cl-resources::*resources*
-     collect val))
+  (format t "Getting all resources")
+  (let (values)
+    (org.shirakumo.luckless.hashtable:maphash
+     (lambda (k v)
+       (declare (ignore k))
+       (push v values))
+     mu-cl-resources::*resources*)
+    (reverse values)))
 
 (defun generate ()
   "Constructs the ttl file."

@@ -1,7 +1,9 @@
-FROM semtech/mu-cl-resources
+FROM semtech/mu-cl-resources:1.22.2
 
 COPY . /app/dependencies/resources-ttl-generator/
-ADD ./startup.lisp /usr/src/startup.lisp
+COPY ./startup.lisp /usr/src/startup.lisp
 ENV SUPPORTED_SCHEMES http,https
 
-CMD sh /load-config.sh; sh mkdir /config/output; sbcl --load /usr/src/startup.lisp
+COPY ./start-generator.sh /start-generator.sh
+
+CMD ["/start-generator.sh"]
