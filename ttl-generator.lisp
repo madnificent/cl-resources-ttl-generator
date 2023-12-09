@@ -52,10 +52,14 @@
 
 (defun make-ttl-class-description ()
   "Constructs description of the class entities."
-  (format nil "~{~A rdf:type owl:Class;~&  rdfs:label \"~A\".~&~}"
+  (format nil "~{~A rdf:type owl:Class;~@[~&   rdfs:subClassOf ~{~A~^, ~};~]~&  rdfs:label \"~A\".~&~}"
    (loop for resource in (all-resources)
       append
-        (list (mu-cl-resources::ld-class resource) (string-downcase (symbol-name (mu-cl-resources::resource-name resource)))))))
+        (list (mu-cl-resources::ld-class resource)
+              (loop for superclass in (mu-cl-resources::superclass-names resource)
+                    collect (mu-cl-resources::ld-class (mu-cl-resources::find-resource-by-name superclass)))
+              (string-downcase (symbol-name (mu-cl-resources::resource-name resource)))))))
+
 
 (defun make-ttl-datatype-descriptions ()
   "Constructs datatype descriptions."
