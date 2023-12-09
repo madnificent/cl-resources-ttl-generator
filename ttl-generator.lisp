@@ -4,7 +4,7 @@
 
 (declaim (optimize (debug 3) (speed 0)))
 
-(defparameter *construct-union-classes* t)
+(defparameter *construct-union-classes* nil)
 
 (defmacro with-union-store (&body body)
   `(let ((*union-store* nil)
@@ -24,19 +24,26 @@
 
 (defun generate ()
   "Constructs the ttl file."
-  (let ((ttl-specification
-         (with-union-store
-           (format nil "~A~&~%~A~&~%~A~&~%~A~&~%~A~&~%~A~&~%"
-                   (make-ttl-prefixes)
-                   (make-ttl-ontology-description)
-                   (make-ttl-class-description)
-                   (make-ttl-datatype-descriptions)
-                   (make-ttl-relation-descriptions)
-                   (make-ttl-union-classes)))))
-    (when (find :docker *features*)
-      (with-open-file (output "/config/output/model.ttl" :direction :output :if-exists :supersede)
-        (format output "~A" ttl-specification)))
-    (format t "~A" ttl-specification)))
+  (flet ((make-generation (target-file)
+           (let ((ttl-specification
+                   (with-union-store
+                     (format nil "~A~&~%~A~&~%~A~&~%~A~&~%~A~&~%~A~&~%"
+                             (make-ttl-prefixes)
+                             (make-ttl-ontology-description)
+                             (make-ttl-class-description)
+                             (make-ttl-datatype-descriptions)
+                             (make-ttl-relation-descriptions)
+                             (make-ttl-union-classes)))))
+             (when (find :docker *features*)
+               (with-open-file (output target-file :direction :output :if-exists :supersede)
+                 (format output "~A" ttl-specification)))
+             (format t "~A" ttl-specification))))
+    (let ((*construct-union-classes* t))
+      (format t "~&~%Model with union classes~%~%~%")
+      (make-generation "/config/output/model.ttl"))
+    (let ((*construct-union-classes* nil))
+      (format t "~&~%Model without union classes~%~%~%")
+      (make-generation "/config/output/model-without-unions.ttl"))))
 
 (defun make-ttl-prefixes ()
   "Constructs the prefixes which may have been used in the model."
