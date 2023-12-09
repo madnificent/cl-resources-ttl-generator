@@ -4,6 +4,8 @@
 
 (declaim (optimize (debug 3) (speed 0)))
 
+(defparameter *construct-union-classes* t)
+
 (defmacro with-union-store (&body body)
   `(let ((*union-store* nil)
          (*union-store-index* 0))
@@ -65,24 +67,38 @@
   "Constructs datatype descriptions."
   (let ((properties-hash (make-hash-table :test 'equal)))
     (loop for resource in (all-resources)
-       do
-         (loop for property in (mu-cl-resources::ld-properties resource)
-            for ld-name = (format nil "~A" (mu-cl-resources::ld-property property))
-            for connected-properties = (gethash ld-name properties-hash nil)
-            do
-              (setf (gethash ld-name properties-hash) `((,property . ,resource) ,@connected-properties))))
-    (format nil "~{~A rdf:type owl:DatatypeProperty;~&  rdfs:comment \"Resources type is ~A\";~&  rdfs:label \"~A\";~&  rdfs:range rdfs:Literal;~&  rdfs:domain ~A.~&~}~%"
-            (loop for properties being the hash-values of properties-hash
-               for (property . resource) = (first properties) ;; TODO: join values in case of reuse
-               append
-                 (list (mu-cl-resources::ld-property property)
-                       (string-downcase (symbol-name (mu-cl-resources::resource-type property)))
-                       (string-downcase (symbol-name (mu-cl-resources::json-key property)))
-                       (if (> (length properties) 1)
-                           (union-class-id (loop for (property . resource) in properties
-                                              collect
-                                                (mu-cl-resources::ld-class resource)))
-                           (mu-cl-resources::ld-class resource)))))))
+          do
+             (loop for property in (mu-cl-resources::ld-properties resource)
+                   for ld-name = (format nil "~A" (mu-cl-resources::ld-property property))
+                   for connected-properties = (gethash ld-name properties-hash nil)
+                   do
+                      (setf (gethash ld-name properties-hash) `((,property . ,resource) ,@connected-properties))))
+    (format nil "~{~A rdf:type owl:DatatypeProperty;~&  rdfs:comment \"Resources type is ~A~@[~A~]\";~&  rdfs:label \"~A\";~&  rdfs:range rdfs:Literal;~&  rdfs:domain ~A.~&~}~%"
+            (if *construct-union-classes*
+                (loop for properties being the hash-values of properties-hash
+                      for (property . resource) = (first properties) ;; TODO: join values in case of reuse
+                      append
+                      (list (mu-cl-resources::ld-property property)
+                            (string-downcase (symbol-name (mu-cl-resources::resource-type property)))
+                            nil ; no extra comment
+                            (string-downcase (symbol-name (mu-cl-resources::json-key property)))
+                            (if (> (length properties) 1)
+                                (union-class-id (loop for (property . resource) in properties
+                                                      collect
+                                                      (mu-cl-resources::ld-class resource)))
+                                (mu-cl-resources::ld-class resource))))
+                (loop for properties being the hash-values of properties-hash
+                      for used-once-p = (not (rest properties))
+                      append
+                      (loop for (property . resource) in properties
+                            for ld-name = (if used-once-p
+                                              (mu-cl-resources::ld-property property)
+                                              (get-local-id))
+                            append (list ld-name
+                                         (string-downcase (symbol-name (mu-cl-resources::resource-type property)))
+                                         (format nil ".  Original predicate is ~A." (mu-cl-resources::ld-property property))
+                                         (string-downcase (symbol-name (mu-cl-resources::json-key property)))
+                                         (mu-cl-resources::ld-class resource))))))))
 
 (defun make-ttl-relation-descriptions ()
   "Constructs relationship descriptions."
@@ -140,6 +156,11 @@
 
 (defun resource-by-name (name)
   (mu-cl-resources::find-resource-by-name name))
+
+(defparameter *id-counter* 0)
+(defun get-local-id ()
+  "Yields a local identifier."
+  (format nil "ext:local_id_~A" (incf *id-counter*)))
 
 (defun union-class-id (classes)
   "Yields an identifier for the union class and ensures it exists"
