@@ -75,7 +75,7 @@
   (let ((properties-hash (make-hash-table :test 'equal)))
     (loop for resource in (all-resources)
           do
-             (loop for property in (mu-cl-resources::ld-properties resource)
+             (loop for property in (mu-cl-resources::direct-ld-properties resource)
                    for ld-name = (format nil "~A" (mu-cl-resources::ld-property property))
                    for connected-properties = (gethash ld-name properties-hash nil)
                    do
@@ -112,7 +112,7 @@
   (let ((links-hash (make-hash-table :test 'equal)))
     (loop for resource in (all-resources)
        do
-         (loop for relationship in (mu-cl-resources::all-links resource)
+         (loop for relationship in (mu-cl-resources::all-direct-links resource)
             for ld-name = (format nil "~A" (mu-cl-resources::ld-link relationship))
             for connected-links = (gethash ld-name links-hash nil)
             do
