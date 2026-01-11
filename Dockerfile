@@ -1,4 +1,4 @@
-FROM semtech/mu-cl-resources:1.22.2
+FROM semtech/mu-cl-resources:1.27.2
 
 COPY . /app/dependencies/resources-ttl-generator/
 COPY ./startup.lisp /usr/src/startup.lisp
