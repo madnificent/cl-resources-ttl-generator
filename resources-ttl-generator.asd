@@ -8,4 +8,5 @@
   :serial t
   :depends-on (mu-cl-resources)
   :components ((:file "packages")
-               (:file "ttl-generator")))
+               (:file "ttl-generator")
+               (:file "shacl-generator")))
