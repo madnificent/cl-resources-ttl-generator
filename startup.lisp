@@ -34,4 +34,11 @@
 (eval (read-from-string "(ql:register-local-projects)"))
 (eval (read-from-string "(ql:quickload :resources-ttl-generator)"))
 (eval (read-from-string "(ttl-generator:generate)"))
-(eval (read-from-string "(shacl-generator:generate)"))
+(eval (read-from-string (format nil "(shacl-generator:generate \"~A\")"
+                                (handler-case
+                                    (with-open-file (in "/config/service-uri" :if-does-not-exist :error)
+                                      (read-line in))
+                                  (error ()
+                                    "http://services.redpencil.io/mu-cl-resources/my-resources")))))
+
+(sb-ext:exit :code 0)

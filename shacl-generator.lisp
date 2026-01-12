@@ -14,7 +14,11 @@
      mu-cl-resources::*resources*)
     (reverse values)))
 
-(defun generate ()
+(defparameter *service-base-uri*
+  "http://services.redpencil.io/mu-cl-resources/my-resources"
+  "URI for this service and base for sub-resources.")
+
+(defun generate (&optional (*service-base-uri* "http://services.redpencil.io/mu-cl-resources/my-resources"))
   "Constructs the ttl file."
   (let ((shacl-specification
           (format nil "~A~%~%# SERVICE DESCRIPTION~%~%~A~%# API ENDPOINTS~%~%~{~A~%~}~%~%# SHACL SHAPES~%~%~{~A~%~}~%~A~%"
@@ -27,10 +31,6 @@
       (with-open-file (output "/config/output/shacl-description.ttl" :direction :output :if-exists :supersede)
         (format output "~A" shacl-specification)))
     (format t "~&~%SHACL SERVICE DESCRIPTION~%~%~A" shacl-specification)))
-
-(defparameter *service-base-uri*
-  "http://services.redpencil.io/mu-cl-resources/my-resources"
-  "URI for this service and base for sub-resources.")
 
 (defun microservice-uri ()
   "URI of this microservice."
