@@ -26,7 +26,7 @@
     (when (find :docker *features*)
       (with-open-file (output "/config/output/shacl-description.ttl" :direction :output :if-exists :supersede)
         (format output "~A" shacl-specification)))
-    (format t "~A" shacl-specification)))
+    (format t "~&~%SHACL SERVICE DESCRIPTION~%~%~A" shacl-specification)))
 
 (defparameter *service-base-uri*
   "http://services.redpencil.io/mu-cl-resources/my-resources"
@@ -56,7 +56,7 @@
 
 (defun make-ttl-prefixes ()
   "Constructs the prefixes which may have been used in the model."
-  (format nil "~&~{@prefix ~A: <~A>.~%~}@prefix dc: <http://purl.org/dc/elements/1.1/>.~%@prefix sh: <shaclhttp://www.w3.org/ns/shacl#>.~%@prefix ext: <http://mu.semte.ch/vocabluries/ext/>.~%@prefix mu: <http://mu.semte.ch/vocabularies/core/>.~%"
+  (format nil "~&~{@prefix ~A: <~A>.~%~}@prefix dc: <http://purl.org/dc/elements/1.1/>.~%@prefix dct: <http://purl.org/dc/terms/>.~%@prefix sh: <shaclhttp://www.w3.org/ns/shacl#>.~%@prefix ext: <http://mu.semte.ch/vocabluries/ext/>.~%@prefix mu: <http://mu.semte.ch/vocabularies/core/>.~%"
           (loop for (prefix . iri)
              in (cl-fuseki:get-prefix-alist)
              append (list prefix iri))))
