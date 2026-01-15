@@ -47,6 +47,12 @@
   (format nil "<~A/full-shape>"
           *service-base-uri*))
 
+(defun full-shape-uri-list-node (index)
+  "The full shape is a list node.  We want URIs for each index and SHACL wants a linked list."
+  (format nil "<~A/full-shape/or-list/~A>"
+          *service-base-uri*
+          index))
+
 (defun resource-shape-uri (resource)
   (format nil "<~A/shapes/~A>"
           *service-base-uri*
@@ -129,7 +135,7 @@
   (format nil "~{~@[~A~%~]~}~%"
           `(,(resource-shape-uri resource)
             "  a sh:NodeShape;"
-            ,(format nil "  sh:targetClass ~A." (mu-cl-resources::ld-class resource))
+            ,(format nil "  sh:targetClass ~A." (or (mu-cl-resources::ld-class resource) "ext:Nothing"))
             ;; the properties
             ,@(loop for slot in (mu-cl-resources::ld-properties resource)
                     for shacl-property-uri = (resource-property-uri resource slot)
@@ -164,7 +170,7 @@
                     for shacl-property-uri = (resource-property-uri resource link)
                     for inverse-path-uri = (resource-property-inverse-path-uri resource link)
                     append
-                    `(,(format nil "~A sh:property ~A.~%~A~%  sh:path ~A;~%  sh:minCount 0~@[;~%  sh:maxCount ~A~];~%  sh:class ~A;~%  sh:nodeKind sh:IRI."
+                    `(,(format nil "~A sh:property ~A.~%~A~%  sh:path ~A;~%  sh:minCount 0~@[;~%  sh:maxCount ~A~]~@[;~%  sh:class ~A~];~%  sh:nodeKind sh:IRI."
                                (resource-shape-uri resource)
                                shacl-property-uri
                                shacl-property-uri
@@ -178,6 +184,19 @@
             ,(format nil "~A sh:closed false." (resource-shape-uri resource)))))
 
 (defun make-full-shape ()
-  (format nil "~A~%  a sh:NodeShape;~%  sh:or (~{~%    ~A~})."
-          (full-shape-uri)
-          (mapcar #'resource-shape-uri (all-resources))))
+  (format nil
+          "~{~A~%~}"
+          `(,(format nil "~A a sh:NodeShape." (full-shape-uri))
+            ,(format nil "~A sh:or ~A."
+                     (full-shape-uri)
+                     (if (all-resources)
+                         (full-shape-uri-list-node 0)
+                         "rdf:nil"))
+            ,@(loop for (resource . rest) on (all-resources)
+                    for i from 0
+                    collect
+                    (format nil "~A rdf:first ~A~@[; rdf:rest ~A~]."
+                            (full-shape-uri-list-node i)
+                            (resource-shape-uri resource)
+                            (when rest ;; Virtuoso doesn't like a last nil named element
+                              (full-shape-uri-list-node (1+ i))))))))
